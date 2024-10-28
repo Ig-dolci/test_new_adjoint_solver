@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 class NS_simulation():
     def __init__(self):
-        file = "/Users/ddolci/tes_fire_install/firedrake_petsc_new/test_new_adjoint_solver/"
-        self.mesh = Mesh(file + "symmetric_mesh.msh")
+        # file = "/Users/ddolci/tes_fire_install/firedrake_petsc_new/test_new_adjoint_solver/"
+        self.mesh = Mesh("symmetric_mesh.msh")
         # coordinates = np.loadtxt("solution/Re_200/mesh_final.txt", delimiter=',')
         # self.mesh.coordinates.dat.data[:,:] = coordinates
 
@@ -82,7 +82,7 @@ class NS_simulation():
         # Delta_t = 1/12
         # Tfinal = 60.0
         Delta_t = 1/48
-        Tfinal = 5.0
+        Tfinal = 10.0
         List_t = np.arange(Delta_t, Tfinal + Delta_t, Delta_t)
 
         self.sol_n = Function(self.V)
@@ -94,8 +94,8 @@ class NS_simulation():
         F_solver = NonlinearVariationalSolver(F_prob, solver_parameters=self.solver_params)
 
         # Solve state equation and compute stability
-        self.solve(Constant(80))
-        self.Re.assign(150)
+        self.solve(Constant(50))
+        self.Re.assign(100)
         self.sol_n.assign(self.sol)
         self.sol.assign(self.sol_n)
 
@@ -115,7 +115,7 @@ class NS_simulation():
 
         with stop_annotating():
             J_hat = ReducedFunctional(Cd_medio, Control(NS.f))
-            for iteration in range(3):
+            for iteration in range(5):
                 x, y = SpatialCoordinate(NS.mesh)
                 x_c, y_c = -1.5, 0.0
                 NS.g = exp(-100*(iteration + 1)*((x - x_c)**2 + (y - y_c)**2))
