@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 
 class NS_simulation():
     def __init__(self):
-        self.mesh = Mesh("symmetric_mesh.msh")
+        file = "/Users/ddolci/tes_fire_install/firedrake_petsc_new/test_new_adjoint_solver/"
+        self.mesh = Mesh(file + "symmetric_mesh.msh")
         # coordinates = np.loadtxt("solution/Re_200/mesh_final.txt", delimiter=',')
         # self.mesh.coordinates.dat.data[:,:] = coordinates
 
@@ -57,7 +58,7 @@ class NS_simulation():
                     DirichletBC(self.V.sub(0), Constant((0,0)), (13))]
 
     def solve(self, Re):
-        self.Re.assign(Constant(Re))
+        self.Re.assign(Re)
         continue_annotation()
         F = self.residual(self.sol, self.sol_test)
         solve(F == 0, self.sol, bcs=self.bcs, solver_parameters=self.solver_params)
@@ -81,13 +82,13 @@ class NS_simulation():
         # Delta_t = 1/12
         # Tfinal = 60.0
         Delta_t = 1/48
-        Tfinal = 10.0
+        Tfinal = 5.0
         List_t = np.arange(Delta_t, Tfinal + Delta_t, Delta_t)
 
         self.sol_n = Function(self.V)
         (u_n, _) = split(self.sol_n)
         (u, _) = split(self.sol)
-        (v, _) = split(self.sol_test) 
+        (v, _) = split(self.sol_test)
         F = (1/Delta_t) * inner(u - u_n, v) * dx - 0.5*(self.residual(self.sol, self.sol_test) + self.residual(self.sol_n, self.sol_test))
         F_prob = NonlinearVariationalProblem(F, self.sol, bcs=self.bcs)
         F_solver = NonlinearVariationalSolver(F_prob, solver_parameters=self.solver_params)
@@ -101,21 +102,30 @@ class NS_simulation():
         self.save_solution()
         Cd_medio = 0.
         Cl_medio = 0.
+        print(List_t)
         for t in List_t:
             print("T = %.2e"%t)
             F_solver.solve()
             self.save_solution()
             self.sol_n.assign(self.sol)
-            if t % 1.0 == 0.0:
-                Cd, Cl = self.compute_drag_lift()
-                Cd_medio += Cd/Tfinal
-                Cl_medio += Cl/Tfinal
+            # if t % 1.0 == 0.0:
+            Cd, Cl = self.compute_drag_lift()
+            Cd_medio += Cd/Tfinal
+            Cl_medio += Cl/Tfinal
 
         with stop_annotating():
             J_hat = ReducedFunctional(Cd_medio, Control(NS.f))
-            grad = J_hat.derivative(options={"riesz_representation": "l2"})
+            for iteration in range(3):
+                x, y = SpatialCoordinate(NS.mesh)
+                x_c, y_c = -1.5, 0.0
+                NS.g = exp(-100*(iteration + 1)*((x - x_c)**2 + (y - y_c)**2))
+                NS.f = assemble(inner(as_vector([NS.g, NS.g]), v) * dx)
+                J_hat(NS.f)
+                J_hat.derivative(options={"riesz_representation": "l2"})
 
 
 if __name__ == "__main__":
     NS = NS_simulation()
+    # NS.solve(50)
+    # Cd, _ = NS.compute_drag_lift()
     NS.transient()
